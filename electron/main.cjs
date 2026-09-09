@@ -3,7 +3,9 @@ const path=require('node:path'),fs=require('node:fs/promises'),{pathToFileURL}=r
 const root=path.join(__dirname,'..'),browserTest=process.argv.includes('--browser-test'),selfTest=process.argv.includes('--self-test')||browserTest;
 const arg=name=>{const i=process.argv.indexOf(name);return i>=0?process.argv[i+1]:null;};
 app.setName('EQL Atlas Cross-Platform');
-if(selfTest)app.setPath('userData',path.join(root,'qa','test-profile'));
+// Packaged app resources are read-only; keep test profiles and reports outside the archive.
+const testRoot=selfTest&&app.isPackaged?path.join(app.getPath('temp'),'eql-atlas-test-'+process.pid):root;
+if(selfTest){require('node:fs').mkdirSync(path.join(testRoot,'qa','test-profile'),{recursive:true});app.setPath('userData',path.join(testRoot,'qa','test-profile'));}
 let win,catalog=null,config={},scanFolder,readZone;
 const configPath=()=>path.join(app.getPath('userData'),'atlas.json');
 async function setFolder(folder){
@@ -45,6 +47,6 @@ app.whenReady().then(async()=>{
     {role:'editMenu'},{label:'View',submenu:[{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{type:'separator'},{role:'togglefullscreen'}]});
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
   await win.loadFile(path.join(root,'dist/index.html'));
-  if(selfTest){try{if(browserTest)await require('./browser-test.cjs')(win,root,requested);else await require('./self-test.cjs')(win,root);app.exit(0);}catch(error){console.error(error);app.exit(1);}}
+  if(selfTest){try{if(browserTest)await require('./browser-test.cjs')(win,testRoot,requested);else await require('./self-test.cjs')(win,testRoot);console.log('Test reports:',path.join(testRoot,'qa'));app.exit(0);}catch(error){console.error(error);app.exit(1);}}
 }).catch(e=>{console.error(e);app.exit(1);});
 app.on('window-all-closed',()=>app.quit());
