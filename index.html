@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'">
+<title>EQL Atlas Cross-Platform</title><meta name="description" content="Explore your local EverQuest maps in 3D."></head>
+<body><div id="app">
+  <aside class="zones-panel">
+    <header class="brand"><span class="brand-icon" aria-hidden="true">◈</span><div><strong>EQL ATLAS</strong><small>Cross-platform edition</small></div></header>
+    <button id="open-folder" class="primary">Open maps folder</button><input id="folder-input" type="file" webkitdirectory multiple hidden>
+    <label class="search-label"><span>Zones</span><input id="zone-search" type="search" placeholder="Name or short name…" autocomplete="off"></label>
+    <nav id="zone-list" aria-label="Zone maps"></nav>
+    <footer id="zone-count">No maps loaded</footer>
+  </aside>
+  <main>
+    <header class="zone-header"><div><h1 id="zone-title">Choose your maps folder</h1><p id="zone-subtitle">Open the maps folder inside your EQL installation.</p></div><label class="source-label">Map source<select id="source-select" disabled></select></label></header>
+    <div class="view-toolbar"><div id="view-buttons" role="group" aria-label="Map orientation"><button data-view="3d" aria-pressed="true">3D</button><button data-view="top" aria-pressed="false">Top</button><button data-view="north" aria-pressed="false">Side N</button><button data-view="west" aria-pressed="false">Side W</button></div><div class="tools"><button id="fit-zone">Fit zone</button><button id="fit-slice">Fit slice</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-in" aria-label="Zoom in">+</button><button id="export">Save image</button></div></div>
+    <div id="map-stage" aria-label="Interactive 3D zone map"><canvas id="labels-canvas" aria-hidden="true"></canvas><div id="empty-state"><span class="empty-icon" aria-hidden="true">◈</span><h2>Your maps. Every height.</h2><p>Select the game’s <strong>maps</strong> folder to begin.<br>Files stay on your computer.</p></div><div id="map-caption"></div><div id="map-stats"></div></div>
+    <footer class="map-footer"><span id="interaction-help">Drag to orbit · Shift-drag / right-drag to pan · Scroll to zoom</span><span id="status" role="status" aria-live="polite">Ready</span></footer>
+  </main>
+  <aside class="controls-panel">
+    <section><div class="section-title"><h2>Height slice</h2><button id="all-heights" class="text-button">All heights</button></div>
+      <label class="range-label">Minimum Z<input type="number" id="z-low-number" step="0.1" value="0"></label><input type="range" id="z-low" min="0" max="1" value="0" step="0.1" aria-label="Minimum height">
+      <label class="range-label">Maximum Z<input type="number" id="z-high-number" step="0.1" value="1"></label><input type="range" id="z-high" min="0" max="1" value="1" step="0.1" aria-label="Maximum height">
+      <div class="split-row"><button id="slice-down">↓ Lower slice</button><button id="slice-up">↑ Higher slice</button></div>
+      <label class="check"><input type="checkbox" id="ghost" checked>Show other heights faintly</label>
+    </section>
+    <section><h2>See between levels</h2><label class="range-label">Side height scale<select id="height-scale" disabled><option value="1">1× · true scale</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option><option value="16">16×</option></select></label>
+      <label class="check"><input type="checkbox" id="cutaway" disabled>Side cutaway</label>
+      <label class="range-label">Depth position<output id="depth-value">—</output></label><input id="depth" type="range" min="0" max="1" value="0" disabled aria-label="Cutaway depth position">
+      <label class="range-label">Depth width<input id="depth-width" type="number" min="1" value="100" disabled></label>
+      <label class="check"><input type="checkbox" id="vertical-edges">Highlight vertical edges</label><p class="help">Edges show structure; they don’t confirm a passable route.</p>
+    </section>
+    <section><h2>Landmarks</h2><div class="wrap-row"><label class="check"><input type="checkbox" id="show-labels" checked>Labels</label><label class="check"><input type="checkbox" id="references" disabled>Brewall refs</label></div>
+      <label class="sr-only" for="label-search">Search landmarks</label><input id="label-search" type="search" placeholder="Stairs, shaft, room name…">
+      <label class="sr-only" for="landmark">Landmark</label><select id="landmark"><option value="">Choose a landmark</option></select>
+      <div id="landmark-detail" class="detail">Select a map annotation to see its coordinates.</div><div class="split-row"><button id="copy-loc">Copy /loc</button><button id="slice-here">Slice here</button></div>
+      <label class="check"><input type="checkbox" id="extra-layers">Include layers 2–3</label><p class="help">Extra layers may contain off-map legends. Brewall references are not verified EQL spawns.</p>
+    </section>
+    <section><h2>Your location</h2><label class="field-label" for="location">/loc Y, X, Z</label><input id="location" placeholder="128.63, 30.11, 299.07"><div class="split-row"><button id="mark-location" class="primary">Mark location</button><button id="clear-location">Clear</button></div><p id="location-detail" class="help">Manual marker · no live tracking</p></section>
+  </aside>
+</div><script type="module" src="/src/app.js"></script></body></html>
