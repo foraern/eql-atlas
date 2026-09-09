@@ -4,7 +4,17 @@ A separate JavaScript/Three.js edition of EQL Atlas. The native Swift applicatio
 
 ## Try the desktop app
 
-Open the application in `release/` for your platform. Choose the **maps** folder in your EverQuest installation. The app indexes the root maps and collections one folder below it, such as Brewall. It remembers the chosen folder in its own preferences. A new macOS app may prompt for access if the game is on an external drive.
+Download a package from [GitHub Releases](https://github.com/foraern/eql-atlas/releases). These packages include the runtime; Node.js is only needed to build from source.
+
+| Package | How to launch | Validation |
+| --- | --- | --- |
+| `EQL-Atlas-0.1.0-macOS-arm64.zip` | Extract, move the app to Applications, and open it. Requires an Apple Silicon Mac. | Tested on macOS. |
+| `EQL-Atlas-0.1.0-Windows-x64.zip` | Extract the entire folder, then open `EQL Atlas Cross-Platform.exe`. Keep its supporting files together. | Experimental; packaged on macOS, not tested on Windows. |
+| `EQL-Atlas-0.1.0-Linux-x64.tar.gz` | Extract the archive, then run `./EQL Atlas Cross-Platform` from the extracted folder. | Experimental; packaged on macOS, not tested on Linux. |
+
+The initial release is unsigned and the Mac app is not notarized. macOS may block the first launch; after trying to open it, use **System Settings → Privacy & Security → Open Anyway** if you choose to trust this download. Windows may also show an unknown-publisher warning. Linux desktop dependencies and sandbox configuration vary by distribution; this preview has not been validated against them. `SHA256SUMS.txt` accompanies the downloads for integrity checks.
+
+Choose the **maps** folder in your EverQuest installation. The app indexes the root maps and collections one folder below it, such as Brewall. It remembers the chosen folder in its own preferences. A new macOS app may prompt for access if the game is on an external drive.
 
 No game maps are distributed with the application, and no game files are modified or uploaded. Installed map collections may contain zones not available in the current EQL release.
 
@@ -61,7 +71,7 @@ npm run package -- --platform linux --arch x64
 npm run package -- --platform darwin --arch arm64
 ```
 
-Builds land in `release/`, separate from the native app. Packaging is not code signing or notarization for public distribution. Build and verify on each target OS before distributing that target; Windows and Linux runtime behavior has not been verified on this Mac.
+Builds land in `release/`, separate from the native app. Packaging is not code signing or notarization for public distribution. Windows and Linux packages are explicitly experimental until their runtime behavior is verified on those systems.
 
 ## Tests
 
