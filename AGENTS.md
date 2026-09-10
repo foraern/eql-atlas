@@ -9,6 +9,7 @@ This is the separate cross-platform EQL Atlas experiment. Keep all changes insid
 - Use only supplied map geometry. Do not invent traversable routes or treat map annotations as live NPC data.
 - Default to layers 0–1. Layers 2–3 often contain diagrams outside the zone.
 - Run `npm test`, `npm run build`, and targeted desktop checks after behavior changes.
+- Use `npm run test:regressions` for repeatable desktop and browser-mode checks with generated map fixtures; the installed-map suites require their original corpus.
 - Read game files only. No game process access, network services, or map uploads.
 - Keep Electron context isolation, sandboxing, and narrow validated IPC. Use a distinct app identifier and preferences directory.
 - Package via `npm run package`; native Windows/Linux execution must be reported separately from macOS verification.

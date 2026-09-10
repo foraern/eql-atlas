@@ -33,6 +33,8 @@ No game maps are distributed with the application, and no game files are modifie
 
 The viewer retains supplied coordinates. It does not infer missing passages or guarantee that a drawn connection is traversable. Layers 2–3 are off by default because they frequently contain legends outside the actual zone.
 
+Height limits, framing, and location checks include geometry from both layers 0 and 1. Switching maps clears the previous geometry and disables map controls until the new source loads. If loading fails, select another source or reopen the folder to retry. Unreadable optional Brewall references produce a warning without preventing the selected map from opening.
+
 ## Run from source
 
 Requires Node.js 22.12+ (Node 24 recommended) and npm.
@@ -77,12 +79,15 @@ Builds land in `release/`, separate from the native app. Packaging is not code s
 
 ```sh
 npm test
+npm run test:regressions
 npm run test:maps -- "/path/to/maps"
 npm run test:desktop -- --maps "/path/to/maps"
 npm run test:browser -- --maps "/path/to/maps"
 ```
 
 Core tests cover parsing, source grouping, location conversion, exact clipping, and decoration bounds. The installed-map check compares Kedge with known source counts and scans the full collection. Desktop integration checks actual rendered map pixels, source/zone switching, slicing, scale, location markers, PNG generation, and renderer isolation. Browser checks exercise a real directory input without the desktop bridge and check responsive layouts. Integration tests use a separate test profile under `qa/`.
+
+`test:regressions` generates temporary synthetic map files and runs both desktop and browser modes in Electron. It verifies layer 1 bounds, failed-load cleanup and recovery, optional-reference failures, export filenames during zone switching, PNG output, renderer isolation, and responsive layouts. It needs no game installation and removes its fixture files afterward; reports and screenshots remain under `qa/`. The `test:maps`, `test:desktop`, and `test:browser` commands retain their assertions against the original installed-map snapshot, including its Kedge counts and 581-zone catalog. They are additional corpus checks, not tests for an arbitrary map folder.
 
 ## Structure
 
