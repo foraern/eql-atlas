@@ -8,9 +8,9 @@ Download a package from [GitHub Releases](https://github.com/foraern/eql-atlas/r
 
 | Package | How to launch | Validation |
 | --- | --- | --- |
-| `EQL-Atlas-0.1.0-macOS-arm64.zip` | Extract, move the app to Applications, and open it. Requires an Apple Silicon Mac. | Tested on macOS. |
-| `EQL-Atlas-0.1.0-Windows-x64.zip` | Extract the entire folder, then open `EQL Atlas Cross-Platform.exe`. Keep its supporting files together. | Experimental; packaged on macOS, not tested on Windows. |
-| `EQL-Atlas-0.1.0-Linux-x64.tar.gz` | Extract the archive, then run `./EQL Atlas Cross-Platform` from the extracted folder. | Experimental; packaged on macOS, not tested on Linux. |
+| `EQL-Atlas-0.1.1-macOS-arm64.zip` | Extract, move the app to Applications, and open it. Requires an Apple Silicon Mac. | Tested on macOS. |
+| `EQL-Atlas-0.1.1-Windows-x64.zip` | Extract the entire folder, then open `EQL Atlas Cross-Platform.exe`. Keep its supporting files together. | Experimental; packaged on macOS, not tested on Windows. |
+| `EQL-Atlas-0.1.1-Linux-x64.tar.gz` | Extract the archive, then run `./EQL Atlas Cross-Platform` from the extracted folder. | Experimental; packaged on macOS, not tested on Linux. |
 
 The initial release is unsigned and the Mac app is not notarized. macOS may block the first launch; after trying to open it, use **System Settings → Privacy & Security → Open Anyway** if you choose to trust this download. Windows may also show an unknown-publisher warning. Linux desktop dependencies and sandbox configuration vary by distribution; this preview has not been validated against them. `SHA256SUMS.txt` accompanies the downloads for integrity checks.
 

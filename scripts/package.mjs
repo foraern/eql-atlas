@@ -1,4 +1,5 @@
 import { packager } from '@electron/packager';
+import packageInfo from '../package.json' with { type: 'json' };
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -13,7 +14,7 @@ const outputs = await packager({
   out: path.join(root, 'release'),
   name: 'EQL Atlas Cross-Platform',
   appBundleId: 'local.eql.atlas.crossplatform',
-  appVersion: '0.1.0',
+  appVersion: packageInfo.version,
   platform,
   arch,
   overwrite: true,
