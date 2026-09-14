@@ -30,6 +30,13 @@ const testRoot =
     ? path.join(app.getPath('temp'), 'eql-atlas-test-' + process.pid)
     : root;
 if (selfTest) {
+  // Headless CI runners lack a usable GPU; normal application launches keep
+  // Chromium's default hardware selection and security settings.
+  if (process.env.ATLAS_TEST_SOFTWARE_GL === '1') {
+    app.commandLine.appendSwitch('use-angle', 'swiftshader');
+    app.commandLine.appendSwitch('enable-unsafe-swiftshader');
+    app.commandLine.appendSwitch('ignore-gpu-blocklist');
+  }
   require('node:fs').mkdirSync(path.join(testRoot, 'qa', 'test-profile'), {
     recursive: true,
   });

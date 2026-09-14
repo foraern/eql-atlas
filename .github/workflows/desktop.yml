@@ -34,6 +34,8 @@ jobs:
         run: npm run test:navigation-ui
       - name: Linux desktop checks
         if: runner.os == 'Linux'
+        env:
+          ATLAS_TEST_SOFTWARE_GL: '1'
         run: |
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           xvfb-run -a npm run test:regressions
@@ -50,6 +52,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Packaged navigation smoke test (Linux)
         if: runner.os == 'Linux'
+        env:
+          ATLAS_TEST_SOFTWARE_GL: '1'
         run: 'xvfb-run -a "release/EQL Atlas Cross-Platform-linux-x64/EQL Atlas Cross-Platform" --navigation-test'
       - name: Archive release package
         run: node scripts/archive-release.mjs
