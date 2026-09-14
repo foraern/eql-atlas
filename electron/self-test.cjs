@@ -17,7 +17,7 @@ module.exports = async (win, root) => {
   await evaluate("window.atlasTest.selectZone('kedge')");
   let initial = await evaluate('window.atlasTest.state');
   assert.equal(initial.lines, 3517);
-  assert.equal(initial.zones, 581);
+  assert.equal(initial.mapZones, 581);
   await settle();
   const pixels = await evaluate(
     `(()=>{const v=window.atlasTest.viewer;v.render();const c=document.createElement('canvas');c.width=v.renderer.domElement.width;c.height=v.renderer.domElement.height;const x=c.getContext('2d');x.drawImage(v.renderer.domElement,0,0);const d=x.getImageData(0,0,c.width,c.height).data;let count=0;for(let i=0;i<d.length;i+=4)if(d[i+1]>100&&d[i+2]>100&&d[i]<d[i+1]*.9)count++;return {count,width:c.width,height:c.height,lines:v.renderer.info.render.lines};})()`,

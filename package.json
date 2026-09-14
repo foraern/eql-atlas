@@ -1,7 +1,7 @@
 {
   "name": "eql-atlas-cross-platform",
   "productName": "EQL Atlas Cross-Platform",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "description": "Offline 3D viewer for local EverQuest map files",
   "type": "module",
@@ -9,13 +9,16 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
-    "start": "npm run build && electron .",
+    "start": "npm run build:navigation && npm run build && electron .",
     "test": "node --test tests/*.test.js",
     "test:maps": "node scripts/check-maps.mjs",
     "test:desktop": "npm run build && electron . --self-test",
     "test:browser": "npm run build && electron . --browser-test",
     "test:regressions": "npm run build && electron . --regression-test && electron . --regression-test --browser-test",
-    "package": "npm run build && node scripts/package.mjs"
+    "package": "npm run build:navigation && npm run build && node scripts/package.mjs",
+    "build:navigation": "node scripts/build-navigation.mjs",
+    "test:navigation": "node scripts/test-navigation.mjs",
+    "test:navigation-ui": "npm run build && electron . --navigation-test"
   },
   "dependencies": {
     "three": "0.186.0"

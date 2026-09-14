@@ -596,3 +596,98 @@ main,
     min-height: 680px;
   }
 }
+
+#routing-panel input:not([type='checkbox']),
+#routing-panel select {
+  width: 100%;
+  font-size: 12px;
+}
+#routing-panel .field-label {
+  margin-top: 12px;
+}
+#routing-panel select {
+  margin-top: 5px;
+}
+#routing-panel .help:empty {
+  display: none;
+}
+#route-status.error {
+  color: #ffbca8;
+}
+#route-advanced {
+  margin-top: 14px;
+}
+#route-advanced summary {
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+}
+.route-profile {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+}
+.route-profile input {
+  margin-top: 4px;
+}
+#route-coverage {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 240px;
+  overflow: auto;
+  font-size: 11px;
+}
+#route-cancel[hidden] {
+  display: none;
+}
+#route-swap {
+  flex: 0 0 30px;
+}
+#route-choice {
+  background: var(--surface);
+  color: inherit;
+  border: 1px solid #46657e;
+  border-radius: 12px;
+  width: min(540px, 90vw);
+  padding: 24px;
+}
+#route-choice::backdrop {
+  background: #0009;
+}
+#route-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 18px 0;
+  max-height: 50vh;
+  overflow: auto;
+}
+#route-choices button {
+  white-space: normal;
+  text-align: left;
+}
+#route-choice-cancel {
+  float: right;
+}
+
+#route-instructions {
+  margin-top: 12px;
+  font-size: 12px;
+}
+#route-instructions summary {
+  color: var(--accent);
+  cursor: pointer;
+}
+#route-instructions-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#route-progress {
+  width: 100%;
+  height: 6px;
+  margin-top: 12px;
+  accent-color: var(--accent);
+}

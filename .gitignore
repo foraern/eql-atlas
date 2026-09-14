@@ -3,3 +3,7 @@ dist/
 release/
 qa/
 .DS_Store
+
+navigation/build/
+__pycache__/
+navigation/runtime/

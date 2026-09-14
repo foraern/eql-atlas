@@ -1,0 +1,63 @@
+name: Desktop builds
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-2022, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: npm run build:navigation
+      - run: npm test
+      - run: npm run test:navigation
+      - name: Desktop and browser regressions
+        if: runner.os != 'Linux'
+        run: npm run test:regressions
+      - name: Navigation UI
+        if: runner.os != 'Linux'
+        run: npm run test:navigation-ui
+      - name: Linux desktop checks
+        if: runner.os == 'Linux'
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          xvfb-run -a npm run test:regressions
+          xvfb-run -a npm run test:navigation-ui
+      - run: npm run package
+      - name: Packaged navigation smoke test (macOS)
+        if: runner.os == 'macOS'
+        run: '"release/EQL Atlas Cross-Platform-darwin-arm64/EQL Atlas Cross-Platform.app/Contents/MacOS/EQL Atlas Cross-Platform" --navigation-test'
+      - name: Packaged navigation smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & "release/EQL Atlas Cross-Platform-win32-x64/EQL Atlas Cross-Platform.exe" --navigation-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Packaged navigation smoke test (Linux)
+        if: runner.os == 'Linux'
+        run: 'xvfb-run -a "release/EQL Atlas Cross-Platform-linux-x64/EQL Atlas Cross-Platform" --navigation-test'
+      - name: Archive release package
+        run: node scripts/archive-release.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-${{ matrix.os }}
+          path: |
+            release/assets/
+            qa/*test.json
+            qa/route-*.png

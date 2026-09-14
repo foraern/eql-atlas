@@ -1,6 +1,6 @@
 # Scope
 
-This is the separate cross-platform EQL Atlas experiment. Keep all changes inside this folder. Do not modify the native Swift sibling `../EQLAtlas` or the installed native application.
+This is the Electron EQL Atlas source repository for macOS, Windows and Linux. Keep all changes inside this folder. Do not modify the native Swift sibling `../EQLAtlas` or the installed native application.
 
 # Stack and validation
 
@@ -13,3 +13,14 @@ This is the separate cross-platform EQL Atlas experiment. Keep all changes insid
 - Read game files only. No game process access, network services, or map uploads.
 - Keep Electron context isolation, sandboxing, and narrow validated IPC. Use a distinct app identifier and preferences directory.
 - Package via `npm run package`; native Windows/Linux execution must be reported separately from macOS verification.
+
+# Navigation
+
+- The C++17 helper lives in `navigation/engine`, with pinned vendored dependencies in `navigation/Vendor`. Preserve licences and record upstream patches.
+- Run `npm run build:navigation` before tests. Use `npm run test:navigation` for engine fixtures and `npm run test:navigation-ui` for sandboxed Electron fixtures; neither needs game assets.
+- Keep helper paths, cache/source authority and process ownership in `electron/navigation.cjs` and `electron/main.cjs`. Renderer code uses bounded commands and opaque context IDs, never raw helper commands or file paths.
+- Polygon references cross JSON as decimal strings. Display height scaling never changes routing coordinates.
+- Current profile defaults: height 6.55, radius 1.31, step 2.0, slope 45; these are modelling assumptions.
+- Never turn disconnected walking paths into successful routes. Explicit action crossings remain separate segments; unverified crossings require preview mode, source/profile/setup-bound user evidence is required in tested mode.
+- Browser mode remains a map viewer; no inferred routes from map lines.
+- Build helpers on their target OS/architecture. Packaging a Mac helper into a Windows/Linux package is invalid. Report runtime checks separately for each platform.

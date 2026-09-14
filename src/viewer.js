@@ -1,5 +1,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import {
+  clipTriangle,
+  routeClip,
+  visiblePoint,
+  pointBounds,
+} from './navigation-geometry.js';
 import { boundsOf, filteredGeometry } from './core.js';
 
 export class MapViewer {
@@ -74,10 +80,29 @@ export class MapViewer {
       }),
     };
     for (const kind of ['context', 'visible', 'vertical']) {
-      this[kind] = new THREE.LineSegments(new THREE.BufferGeometry(), this.materials[kind]);
-      this[kind].renderOrder = kind === 'context' ? 0 : kind === 'visible' ? 1 : 2;
+      this[kind] = new THREE.LineSegments(
+        new THREE.BufferGeometry(),
+        this.materials[kind],
+      );
+      this[kind].renderOrder =
+        kind === 'context' ? 0 : kind === 'visible' ? 1 : 2;
       this.geometry.add(this[kind]);
     }
+    this.navigationTriangles = [];
+    this.reachableTriangles = null;
+    this.route = null;
+    this.routeEndpoints = {};
+    this.navigationMesh = new THREE.Mesh(
+      new THREE.BufferGeometry(),
+      new THREE.MeshBasicMaterial({
+        color: 0x4ece9c,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false,
+      }),
+    );
+    this.geometry.add(this.navigationMesh);
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(stage);
     let down = null;
@@ -85,11 +110,18 @@ export class MapViewer {
       down = [e.clientX, e.clientY];
     });
     this.renderer.domElement.addEventListener('pointerup', (e) => {
-      if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4) return;
+      if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4)
+        return;
       const rect = stage.getBoundingClientRect(),
         x = e.clientX - rect.left,
         y = e.clientY - rect.top;
-      const hit = this.hits.find((h) => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
+      if (this.navigationPicking) {
+        this.pickNavigation(x, y);
+        return;
+      }
+      const hit = this.hits.find(
+        (h) => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h,
+      );
       if (hit) this.onPick(hit.label);
     });
     this.renderer.domElement.addEventListener('webglcontextlost', (e) => {
@@ -123,6 +155,7 @@ export class MapViewer {
   }
   setData(data) {
     this.data = data;
+    this.extendNavigationBounds();
     this.labels = data.labels;
     this.marker = null;
     this.selected = null;
@@ -172,7 +205,8 @@ export class MapViewer {
     if (!this.data) return;
     this.filtered = filteredGeometry(this.data.lines, this.options);
     const sliced =
-      this.options.low > this.data.bounds.min[2] || this.options.high < this.data.bounds.max[2];
+      this.options.low > this.data.bounds.min[2] ||
+      this.options.high < this.data.bounds.max[2];
     for (const [kind, lines] of [
       ['context', this.options.ghost && sliced ? this.filtered.context : []],
       ['visible', this.filtered.visible],
@@ -183,6 +217,7 @@ export class MapViewer {
       old.dispose();
     }
     this.geometry.scale.y = this.factor;
+    this.rebuildNavigation();
     this.requestRender();
     document.getElementById('map-stats').textContent =
       `${this.filtered.visible.length.toLocaleString()} segments · Z ${this.options.low.toFixed(1)} to ${this.options.high.toFixed(1)}` +
@@ -193,7 +228,8 @@ export class MapViewer {
     this.factor = ['north', 'west'].includes(mode) ? this.magnification : 1;
     this.geometry.scale.y = this.factor;
     this.controls.enableRotate = mode === '3d';
-    this.controls.mouseButtons.LEFT = mode === '3d' ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN;
+    this.controls.mouseButtons.LEFT =
+      mode === '3d' ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN;
     this.camera.up.set(0, 1, 0);
     let dir;
     if (mode === 'top') {
@@ -212,17 +248,21 @@ export class MapViewer {
     this.magnification = value;
     this.setView(this.mode);
   }
-  fit(slice = false) {
+  fit(slice = false, override = null) {
     if (!this.data) return;
     const bounds =
-      slice && this.filtered?.visible.length ? boundsOf(this.filtered.visible) : this.data.bounds;
+      override ||
+      (slice && this.filtered?.visible.length
+        ? boundsOf(this.filtered.visible)
+        : this.data.bounds);
     const center = new THREE.Vector3(
       bounds.center[0],
       bounds.center[2] * this.factor,
       bounds.center[1],
     );
     const direction =
-      this.direction?.clone() || this.camera.position.clone().sub(this.controls.target).normalize();
+      this.direction?.clone() ||
+      this.camera.position.clone().sub(this.controls.target).normalize();
     this.direction = null;
     const distance = Math.max(this.data.bounds.span * this.factor * 5, 1000);
     this.camera.position.copy(center).addScaledVector(direction, distance);
@@ -250,7 +290,11 @@ export class MapViewer {
     this.requestRender();
   }
   focus(point) {
-    const target = new THREE.Vector3(point[0], point[2] * this.factor, point[1]),
+    const target = new THREE.Vector3(
+        point[0],
+        point[2] * this.factor,
+        point[1],
+      ),
       delta = target.clone().sub(this.controls.target);
     this.controls.target.copy(target);
     this.camera.position.add(delta);
@@ -264,8 +308,16 @@ export class MapViewer {
     this.requestRender();
   }
   project(point) {
-    const p = new THREE.Vector3(point[0], point[2] * this.factor, point[1]).project(this.camera);
-    return { x: ((p.x + 1) * this.width) / 2, y: ((1 - p.y) * this.height) / 2, z: p.z };
+    const p = new THREE.Vector3(
+      point[0],
+      point[2] * this.factor,
+      point[1],
+    ).project(this.camera);
+    return {
+      x: ((p.x + 1) * this.width) / 2,
+      y: ((1 - p.y) * this.height) / 2,
+      z: p.z,
+    };
   }
   requestRender() {
     if (this.frame) return;
@@ -293,7 +345,11 @@ export class MapViewer {
       z < centerZ + halfHeight / this.factor;
       z += step
     ) {
-      const projected = this.project([this.controls.target.x, this.controls.target.z, z]);
+      const projected = this.project([
+        this.controls.target.x,
+        this.controls.target.z,
+        z,
+      ]);
       if (projected.y < 55 || projected.y > height - 45) continue;
       context.strokeStyle = '#8ba6bc28';
       context.beginPath();
@@ -324,12 +380,19 @@ export class MapViewer {
     context.arc(projected.x, projected.y, label ? 3 : 5, 0, Math.PI * 2);
     context.fill();
     const maxWidth = Math.min(w - 25, 250);
-    while (context.measureText(text).width > maxWidth && text.length > 5) text = text.slice(0, -2);
+    while (context.measureText(text).width > maxWidth && text.length > 5)
+      text = text.slice(0, -2);
     if (context.measureText(text).width >= maxWidth - 10) text += '…';
     const textWidth = context.measureText(text).width;
-    for (const offsetY of [-22, 9, -41, 28]) {
+    const placements = [-22, 9, -41, 28].flatMap((offsetY) =>
+      (label ? [8] : [8, -textWidth - 18]).map((offsetX) => ({
+        offsetX,
+        offsetY,
+      })),
+    );
+    for (const { offsetX, offsetY } of placements) {
       const box = {
-        x: Math.max(8, Math.min(w - textWidth - 18, projected.x + 8)),
+        x: Math.max(8, Math.min(w - textWidth - 18, projected.x + offsetX)),
         y: projected.y + offsetY,
         w: textWidth + 10,
         h: 21,
@@ -366,13 +429,20 @@ export class MapViewer {
     if (!this.data) return;
     const boxes = [
       { x: 0, y: 0, w, h: 44 },
-      { x: 0, y: h - 40, w, h: 40 },
+      { x: 0, y: h - (this.route ? 100 : 40), w, h: this.route ? 100 : 40 },
     ];
     c.font = '12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
     if (['north', 'west'].includes(this.mode)) this.drawHeightRuler();
     const draw = (text, point, color, label) =>
       this.drawAnnotation(text, point, color, label, boxes);
-    if (this.marker) draw(`You · Z ${this.marker[2].toFixed(1)}`, this.marker, '#ffe087', null);
+    this.drawRoute(draw);
+    if (this.marker)
+      draw(
+        `You · Z ${this.marker[2].toFixed(1)}`,
+        this.marker,
+        '#ffe087',
+        null,
+      );
     if (this.selected)
       draw(
         `${this.selected.name} · Z ${this.selected.position[2].toFixed(1)}`,
@@ -391,7 +461,11 @@ export class MapViewer {
         )
           continue;
         const d = this.options.depth;
-        if (d && Math.abs(l.position[this.mode === 'west' ? 0 : 1] - d.center) > d.width / 2)
+        if (
+          d &&
+          Math.abs(l.position[this.mode === 'west' ? 0 : 1] - d.center) >
+            d.width / 2
+        )
           continue;
         draw(l.name, l.position, l.reference ? '#ffca8d' : '#e1eff6', l);
         if (++shown > 350) break;
@@ -404,7 +478,192 @@ export class MapViewer {
       west: 'Side · looking west · north →',
     };
     document.getElementById('map-caption').textContent =
-      captions[this.mode] + (this.factor !== 1 ? ` · height ×${this.factor}` : '');
+      captions[this.mode] +
+      (this.factor !== 1 ? ` · height ×${this.factor}` : '');
+  }
+  setNavigation(triangles) {
+    this.navigationTriangles = triangles;
+    this.reachableTriangles = null;
+    this.excludedCrossings = [];
+    this.extendNavigationBounds();
+    this.rebuildNavigation();
+  }
+  extendNavigationBounds() {
+    if (!this.data || !this.navigationTriangles.length) return;
+    const points = [this.data.bounds.min, this.data.bounds.max];
+    // Accumulate without spreading a large mesh into call arguments.
+    let min = [Infinity, Infinity, Infinity],
+      max = [-Infinity, -Infinity, -Infinity];
+    for (const tri of this.navigationTriangles)
+      for (const p of tri)
+        for (let a = 0; a < 3; a++) {
+          min[a] = Math.min(min[a], p[a]);
+          max[a] = Math.max(max[a], p[a]);
+        }
+    this.data.bounds = pointBounds(
+      this.data.navigationOnly ? [min, max] : points.concat([min, max]),
+    );
+  }
+  rebuildNavigation() {
+    const triangles = this.reachableTriangles || this.navigationTriangles;
+    this.navigationMesh.visible = !!(
+      this.showNavigation ||
+      this.navigationPicking ||
+      this.reachableTriangles
+    );
+    const vertices = [];
+    if (this.navigationMesh.visible)
+      for (const tri of triangles)
+        for (const clipped of clipTriangle(tri, this.options))
+          for (const p of clipped) vertices.push(p[0], p[2], p[1]);
+    this.navigationMesh.geometry.dispose();
+    this.navigationMesh.geometry = new THREE.BufferGeometry();
+    this.navigationMesh.geometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(vertices, 3),
+    );
+    if (vertices.length) this.navigationMesh.geometry.computeBoundingSphere();
+    this.requestRender();
+  }
+  pickNavigation(x, y) {
+    this.camera.updateMatrixWorld(true);
+    this.geometry.updateMatrixWorld(true);
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(
+      new THREE.Vector2((x / this.width) * 2 - 1, 1 - (y / this.height) * 2),
+      this.camera,
+    );
+    const points = [];
+    for (const hit of ray.intersectObject(this.navigationMesh)) {
+      const p = [hit.point.x, hit.point.z, hit.point.y / this.factor];
+      if (!points.some((q) => Math.hypot(...p.map((v, i) => v - q[i])) < 0.5))
+        points.push(p);
+    }
+    this.onNavigationPick?.(points);
+  }
+  setReachable(triangles, excluded = []) {
+    this.reachableTriangles = triangles;
+    this.excludedCrossings = excluded;
+    this.rebuildNavigation();
+  }
+  setRoute(route, endpoints = {}) {
+    this.route = route;
+    this.routeEndpoints = { ...endpoints };
+    this.requestRender();
+  }
+  fitRoute() {
+    if (!this.route?.points.length) return;
+    this.fit(false, pointBounds(this.route.points));
+    // Reserve room for route annotations and the persistent geometry caveat.
+    this.half *= this.height / Math.max(100, this.height - 100);
+    this.updateFrustum();
+    this.requestRender();
+  }
+  drawRoute(draw) {
+    const c = this.ctx;
+    let hidden = 0,
+      arrowDistance = 0,
+      action = 0;
+    const drawSegment = (a, b, color, dashed, opacity = 1) => {
+      const p = this.project(a),
+        q = this.project(b);
+      if (p.z < -1 || p.z > 1 || q.z < -1 || q.z > 1) return;
+      c.globalAlpha = opacity;
+      c.strokeStyle = color;
+      c.lineWidth = 3;
+      c.setLineDash(dashed ? [7, 5] : []);
+      c.beginPath();
+      c.moveTo(p.x, p.y);
+      c.lineTo(q.x, q.y);
+      c.stroke();
+      c.setLineDash([]);
+      const length = Math.hypot(q.x - p.x, q.y - p.y);
+      arrowDistance += length;
+      if (opacity === 1 && length > 0.1 && (arrowDistance > 70 || dashed)) {
+        const angle = Math.atan2(q.y - p.y, q.x - p.x),
+          x = (p.x + q.x) / 2,
+          y = (p.y + q.y) / 2;
+        c.fillStyle = color;
+        c.beginPath();
+        c.moveTo(x + 6 * Math.cos(angle), y + 6 * Math.sin(angle));
+        c.lineTo(x + 5 * Math.cos(angle + 2.5), y + 5 * Math.sin(angle + 2.5));
+        c.lineTo(x + 5 * Math.cos(angle - 2.5), y + 5 * Math.sin(angle - 2.5));
+        c.fill();
+        arrowDistance = 0;
+      }
+      c.globalAlpha = 1;
+    };
+    for (const segment of this.route?.segments || []) {
+      const crossing = segment.kind !== 'walk',
+        color = crossing ? '#ffb464' : '#68f5e1';
+      for (let i = 1; i < segment.points.length; i++) {
+        const a = segment.points[i - 1],
+          b = segment.points[i],
+          line = routeClip(a, b, this.options);
+        if (!visiblePoint(a, this.options) || !visiblePoint(b, this.options)) {
+          hidden++;
+          if (this.options.ghost) drawSegment(a, b, color, true, 0.17);
+        }
+        if (line)
+          drawSegment(line.slice(0, 3), line.slice(3, 6), color, crossing);
+      }
+      if (crossing) {
+        action++;
+        const p = segment.points[0];
+        if (visiblePoint(p, this.options))
+          draw(
+            `${segment.kind} ${action} · ${segment.status === 'unverified' ? 'UNVERIFIED' : 'user-tested'}`,
+            p,
+            color,
+            null,
+          );
+      }
+    }
+    for (const crossing of this.excludedCrossings || [])
+      if (crossing.from && crossing.to) {
+        const line = routeClip(crossing.from, crossing.to, this.options);
+        if (line)
+          drawSegment(line.slice(0, 3), line.slice(3, 6), '#ff9c64', true, 0.5);
+      }
+    for (const [key, color, label] of [
+      ['start', '#a5ff92', 'Start'],
+      ['end', '#ff9cc6', 'Destination'],
+    ]) {
+      const p = this.routeEndpoints[key]?.point;
+      if (p) {
+        if (visiblePoint(p, this.options)) draw(label, p, color, null);
+        else {
+          hidden++;
+          if (this.options.ghost) {
+            c.globalAlpha = 0.25;
+            draw(label + ' · hidden', p, color, null);
+            c.globalAlpha = 1;
+          }
+        }
+      }
+    }
+    if (this.route) {
+      c.fillStyle = '#0a111bea';
+      c.fillRect(8, this.height - 91, this.width - 16, 48);
+      c.fillStyle =
+        this.route.status === 'requiresVerification' ? '#ffb464' : '#cfeee9';
+      c.fillText(
+        `${this.route.status === 'requiresVerification' ? 'UNVERIFIED PREVIEW' : this.route.status === 'userTestedCrossings' ? 'User-tested crossings · ' + this.route.capability : 'Walking route'} · ${this.route.distance.toFixed(1)} units${hidden ? ' · portions hidden by slice / cutaway' : ''}`,
+        15,
+        this.height - 72,
+        this.width - 30,
+      );
+      c.fillStyle = '#b7c8d5';
+      c.font = '11px sans-serif';
+      c.fillText(
+        'Based on static geometry; door access and live obstructions are unverified.',
+        15,
+        this.height - 53,
+        this.width - 30,
+      );
+      c.font = '12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+    }
+    this.hiddenRouteParts = hidden;
   }
   async png() {
     this.render();

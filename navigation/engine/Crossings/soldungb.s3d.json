@@ -1,0 +1,139 @@
+{
+  "version": 1,
+  "zone": "soldungb",
+  "format": "s3d",
+  "assets": {
+    "soldungb.s3d": "52a492f3282bb1aa1d053dc463aa7ca1ef175268fe04b0349035b1b85a6c0c3a",
+    "soldungb_obj.s3d": "cc540dab59b49e825fc79204b165d4b6ea4a8e7fe020f6876c6371a615ee5190"
+  },
+  "links": [
+    {
+      "id": "efreeti-stones-1",
+      "kind": "jump",
+      "label": "Efreeti lava crossing 1",
+      "from": [
+        27.59373665,
+        762.97497559,
+        -107.9375
+      ],
+      "to": [
+        25.1937,
+        772.575,
+        -107.83125
+      ],
+      "note": "Geometry-reviewed endpoints on separate dry ledges above lava. Jump range, trajectory, overhead clearance and landing reliability are unverified in EQL."
+    },
+    {
+      "id": "efreeti-stones-1-reverse",
+      "kind": "jump",
+      "label": "Efreeti lava crossing 1",
+      "from": [
+        25.1937,
+        772.575,
+        -107.83125
+      ],
+      "to": [
+        27.59373665,
+        762.97497559,
+        -107.9375
+      ],
+      "note": "Geometry-reviewed endpoints on separate dry ledges above lava. Jump range, trajectory, overhead clearance and landing reliability are unverified in EQL."
+    },
+    {
+      "id": "efreeti-stones-2",
+      "kind": "jump",
+      "label": "Efreeti lava crossing 2",
+      "from": [
+        18.7937,
+        780.575,
+        -107.83125
+      ],
+      "to": [
+        19.5937,
+        790.975,
+        -107.83125
+      ],
+      "note": "Geometry-reviewed endpoints on separate dry ledges above lava. Jump range, trajectory, overhead clearance and landing reliability are unverified in EQL."
+    },
+    {
+      "id": "efreeti-stones-2-reverse",
+      "kind": "jump",
+      "label": "Efreeti lava crossing 2",
+      "from": [
+        19.5937,
+        790.975,
+        -107.83125
+      ],
+      "to": [
+        18.7937,
+        780.575,
+        -107.83125
+      ],
+      "note": "Geometry-reviewed endpoints on separate dry ledges above lava. Jump range, trajectory, overhead clearance and landing reliability are unverified in EQL."
+    },
+    {
+      "id": "efreeti-stones-3",
+      "kind": "jump",
+      "label": "Efreeti lava crossing 3",
+      "from": [
+        17.1937,
+        797.375,
+        -107.83125
+      ],
+      "to": [
+        6.7937,
+        800.575,
+        -107.83125
+      ],
+      "note": "Geometry-reviewed endpoints on separate dry ledges above lava. Jump range, trajectory, overhead clearance and landing reliability are unverified in EQL."
+    },
+    {
+      "id": "efreeti-stones-3-reverse",
+      "kind": "jump",
+      "label": "Efreeti lava crossing 3",
+      "from": [
+        6.7937,
+        800.575,
+        -107.83125
+      ],
+      "to": [
+        17.1937,
+        797.375,
+        -107.83125
+      ],
+      "note": "Geometry-reviewed endpoints on separate dry ledges above lava. Jump range, trajectory, overhead clearance and landing reliability are unverified in EQL."
+    },
+    {
+      "id": "efreeti-stones-4",
+      "kind": "jump",
+      "label": "Efreeti lava crossing 4",
+      "from": [
+        -6.0063,
+        796.575,
+        -107.83125
+      ],
+      "to": [
+        -18.8063,
+        796.545,
+        -107.83125
+      ],
+      "note": "Geometry-reviewed endpoints on separate dry ledges above lava. Jump range, trajectory, overhead clearance and landing reliability are unverified in EQL."
+    },
+    {
+      "id": "efreeti-stones-4-reverse",
+      "kind": "jump",
+      "label": "Efreeti lava crossing 4",
+      "from": [
+        -18.8063,
+        796.545,
+        -107.83125
+      ],
+      "to": [
+        -6.0063,
+        796.575,
+        -107.83125
+      ],
+      "note": "Geometry-reviewed endpoints on separate dry ledges above lava. Jump range, trajectory, overhead clearance and landing reliability are unverified in EQL."
+    }
+  ]
+}

@@ -8,14 +8,19 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'"
     />
     <title>EQL Atlas Cross-Platform</title>
-    <meta name="description" content="Explore your local EverQuest maps in 3D." />
+    <meta
+      name="description"
+      content="Explore your local EverQuest maps in 3D."
+    />
   </head>
   <body>
     <div id="app">
       <aside class="zones-panel">
         <header class="brand">
           <span class="brand-icon" aria-hidden="true">◈</span>
-          <div><strong>EQL ATLAS</strong><small>Cross-platform edition</small></div>
+          <div>
+            <strong>EQL ATLAS</strong><small>Cross-platform edition</small>
+          </div>
         </header>
         <button id="open-folder" class="primary">Open maps folder</button
         ><input id="folder-input" type="file" webkitdirectory multiple hidden />
@@ -34,7 +39,9 @@
         <header class="zone-header">
           <div>
             <h1 id="zone-title">Choose your maps folder</h1>
-            <p id="zone-subtitle">Open the maps folder inside your EQL installation.</p>
+            <p id="zone-subtitle">
+              Open the maps folder inside your EQL installation.
+            </p>
           </div>
           <label class="source-label"
             >Map source<select id="source-select" disabled></select
@@ -48,7 +55,8 @@
             ><button data-view="west" aria-pressed="false">Side W</button>
           </div>
           <div class="tools">
-            <button id="fit-zone">Fit zone</button><button id="fit-slice">Fit slice</button
+            <button id="fit-zone">Fit zone</button
+            ><button id="fit-slice">Fit slice</button
             ><button id="zoom-out" aria-label="Zoom out">−</button
             ><button id="zoom-in" aria-label="Zoom in">+</button
             ><button id="export">Save image</button>
@@ -60,8 +68,8 @@
             <span class="empty-icon" aria-hidden="true">◈</span>
             <h2>Your maps. Every height.</h2>
             <p>
-              Select the game’s <strong>maps</strong> folder to begin.<br />Files stay on your
-              computer.
+              Select the game’s <strong>maps</strong> folder to begin.<br />Files
+              stay on your computer.
             </p>
           </div>
           <div id="map-caption"></div>
@@ -69,18 +77,202 @@
         </div>
         <footer class="map-footer">
           <span id="interaction-help"
-            >Drag to orbit · Shift-drag / right-drag to pan · Scroll to zoom</span
+            >Drag to orbit · Shift-drag / right-drag to pan · Scroll to
+            zoom</span
           ><span id="status" role="status" aria-live="polite">Ready</span>
         </footer>
       </main>
       <aside class="controls-panel">
+        <section id="routing-panel">
+          <div class="section-title">
+            <h2>Route</h2>
+            <button id="route-clear" class="text-button">Clear</button>
+          </div>
+          <label class="field-label" for="route-start"
+            >Start · /loc Y, X, Z</label
+          >
+          <input
+            id="route-start"
+            placeholder="Enter coordinates or choose below"
+          />
+          <select id="route-start-source" aria-label="Choose start">
+            <option value="">Choose start…</option>
+            <option value="pick">Pick on map</option>
+            <option value="landmark">Use selected landmark</option>
+            <option value="location">Use your location</option>
+          </select>
+          <p id="route-start-resolved" class="help"></p>
+          <label class="field-label" for="route-end"
+            >Destination · /loc Y, X, Z</label
+          >
+          <input
+            id="route-end"
+            placeholder="Enter coordinates or choose below"
+          />
+          <select id="route-end-source" aria-label="Choose destination">
+            <option value="">Choose destination…</option>
+            <option value="pick">Pick on map</option>
+            <option value="landmark">Use selected landmark</option>
+            <option value="location">Use your location</option>
+          </select>
+          <p id="route-end-resolved" class="help"></p>
+          <div class="split-row">
+            <button id="route-calculate" class="primary">Find route</button
+            ><button id="route-cancel" hidden>Cancel</button
+            ><button id="route-fit">Fit</button
+            ><button id="route-swap" aria-label="Swap start and destination">
+              ⇅
+            </button>
+          </div>
+          <progress
+            id="route-progress"
+            aria-label="Navigation preparation progress"
+            hidden
+          ></progress>
+          <p id="route-status" class="help" role="status">
+            Choose two points to find a walking route.
+          </p>
+          <details id="route-instructions" hidden>
+            <summary>Route instructions</summary>
+            <div id="route-instructions-text" class="help"></div>
+          </details>
+          <p class="help route-note">
+            Based on static geometry; door access and live obstructions are
+            unverified.
+          </p>
+          <details id="route-advanced">
+            <summary>Route options</summary>
+            <label class="field-label"
+              >Movement<select id="route-mode">
+                <option value="walk">Walking only</option>
+                <option value="tested">Allow tested crossings</option>
+                <option value="preview">Preview unverified crossings</option>
+              </select></label
+            >
+            <p class="help">
+              Preview crossings are schematic, not confirmed passable. Green
+              shows reachable walking surfaces when no route is found.
+            </p>
+            <label class="field-label"
+              >Geometry version<select id="route-format"></select
+            ></label>
+            <div class="route-profile">
+              <label
+                >Height<input
+                  id="route-height"
+                  type="number"
+                  value="6.55"
+                  min="1"
+                  max="30"
+                  step="0.05"
+              /></label>
+              <label
+                >Radius<input
+                  id="route-radius"
+                  type="number"
+                  value="1.31"
+                  min="0.4"
+                  max="10"
+                  step="0.01"
+              /></label>
+              <label
+                >Step<input
+                  id="route-step"
+                  type="number"
+                  value="2"
+                  min="0"
+                  max="10"
+                  step="0.1"
+              /></label>
+              <label
+                >Slope °<input
+                  id="route-slope"
+                  type="number"
+                  value="45"
+                  min="1"
+                  max="60"
+              /></label>
+            </div>
+            <p class="help">
+              Modelling assumptions, not verified movement constants. Step
+              defaults to 2.0 for stairs; voxel size is 0.8 × 0.4 units.
+            </p>
+            <label class="field-label"
+              >Character setup<input
+                id="route-capability"
+                value="Standard movement"
+                maxlength="120"
+            /></label>
+            <div class="wrap-row" id="route-actions">
+              <label class="check"
+                ><input type="checkbox" value="jump" checked />Jump</label
+              ><label class="check"
+                ><input type="checkbox" value="swim" />Swim</label
+              ><label class="check"
+                ><input type="checkbox" value="drop" />Drop</label
+              ><label class="check"
+                ><input type="checkbox" value="door" />Door</label
+              ><label class="check"
+                ><input type="checkbox" value="lift" />Lift</label
+              >
+            </div>
+            <div class="route-profile">
+              <label
+                >Jump distance<input
+                  id="route-jumpDistance"
+                  type="number"
+                  value="16"
+                  min="0"
+                  max="100" /></label
+              ><label
+                >Jump rise<input
+                  id="route-jumpRise"
+                  type="number"
+                  value="2"
+                  min="0"
+                  max="100" /></label
+              ><label
+                >Jump descent<input
+                  id="route-jumpDrop"
+                  type="number"
+                  value="2"
+                  min="0"
+                  max="100" /></label
+              ><label
+                >Drop limit<input
+                  id="route-drop"
+                  type="number"
+                  value="8"
+                  min="0"
+                  max="100"
+              /></label>
+            </div>
+            <label class="check"
+              ><input id="route-surfaces" type="checkbox" />Show navigation
+              surfaces</label
+            >
+            <div class="split-row">
+              <button id="route-root">Game folder…</button
+              ><button id="route-batch">Prepare all zones</button>
+            </div>
+            <div class="split-row">
+              <button id="route-import">Import crossings…</button
+              ><button id="route-review">Export review…</button>
+            </div>
+            <pre id="route-coverage" hidden></pre>
+          </details>
+        </section>
         <section>
           <div class="section-title">
             <h2>Height slice</h2>
             <button id="all-heights" class="text-button">All heights</button>
           </div>
           <label class="range-label"
-            >Minimum Z<input type="number" id="z-low-number" step="0.1" value="0" /></label
+            >Minimum Z<input
+              type="number"
+              id="z-low-number"
+              step="0.1"
+              value="0" /></label
           ><input
             type="range"
             id="z-low"
@@ -91,7 +283,11 @@
             aria-label="Minimum height"
           />
           <label class="range-label"
-            >Maximum Z<input type="number" id="z-high-number" step="0.1" value="1" /></label
+            >Maximum Z<input
+              type="number"
+              id="z-high-number"
+              step="0.1"
+              value="1" /></label
           ><input
             type="range"
             id="z-high"
@@ -106,7 +302,8 @@
             ><button id="slice-up">↑ Higher slice</button>
           </div>
           <label class="check"
-            ><input type="checkbox" id="ghost" checked />Show other heights faintly</label
+            ><input type="checkbox" id="ghost" checked />Show other heights
+            faintly</label
           >
         </section>
         <section>
@@ -120,8 +317,11 @@
               <option value="16">16×</option>
             </select></label
           >
-          <label class="check"><input type="checkbox" id="cutaway" disabled />Side cutaway</label>
-          <label class="range-label">Depth position<output id="depth-value">—</output></label
+          <label class="check"
+            ><input type="checkbox" id="cutaway" disabled />Side cutaway</label
+          >
+          <label class="range-label"
+            >Depth position<output id="depth-value">—</output></label
           ><input
             id="depth"
             type="range"
@@ -132,23 +332,37 @@
             aria-label="Cutaway depth position"
           />
           <label class="range-label"
-            >Depth width<input id="depth-width" type="number" min="1" value="100" disabled
+            >Depth width<input
+              id="depth-width"
+              type="number"
+              min="1"
+              value="100"
+              disabled
           /></label>
           <label class="check"
-            ><input type="checkbox" id="vertical-edges" />Highlight vertical edges</label
+            ><input type="checkbox" id="vertical-edges" />Highlight vertical
+            edges</label
           >
-          <p class="help">Edges show structure; they don’t confirm a passable route.</p>
+          <p class="help">
+            Edges show structure; they don’t confirm a passable route.
+          </p>
         </section>
         <section>
           <h2>Landmarks</h2>
           <div class="wrap-row">
-            <label class="check"><input type="checkbox" id="show-labels" checked />Labels</label
+            <label class="check"
+              ><input type="checkbox" id="show-labels" checked />Labels</label
             ><label class="check"
-              ><input type="checkbox" id="references" disabled />Brewall refs</label
+              ><input type="checkbox" id="references" disabled />Brewall
+              refs</label
             >
           </div>
           <label class="sr-only" for="label-search">Search landmarks</label
-          ><input id="label-search" type="search" placeholder="Stairs, shaft, room name…" />
+          ><input
+            id="label-search"
+            type="search"
+            placeholder="Stairs, shaft, room name…"
+          />
           <label class="sr-only" for="landmark">Landmark</label
           ><select id="landmark">
             <option value="">Choose a landmark</option>
@@ -157,12 +371,16 @@
             Select a map annotation to see its coordinates.
           </div>
           <div class="split-row">
-            <button id="copy-loc">Copy /loc</button><button id="slice-here">Slice here</button>
+            <button id="copy-loc">Copy /loc</button
+            ><button id="slice-here">Slice here</button>
           </div>
-          <label class="check"><input type="checkbox" id="extra-layers" />Include layers 2–3</label>
+          <label class="check"
+            ><input type="checkbox" id="extra-layers" />Include layers
+            2–3</label
+          >
           <p class="help">
-            Extra layers may contain off-map legends. Brewall references are not verified EQL
-            spawns.
+            Extra layers may contain off-map legends. Brewall references are not
+            verified EQL spawns.
           </p>
         </section>
         <section>
@@ -173,10 +391,21 @@
             <button id="mark-location" class="primary">Mark location</button
             ><button id="clear-location">Clear</button>
           </div>
-          <p id="location-detail" class="help">Manual marker · no live tracking</p>
+          <p id="location-detail" class="help">
+            Manual marker · no live tracking
+          </p>
         </section>
       </aside>
     </div>
+    <dialog id="route-choice">
+      <h2 id="route-choice-title">Choose a floor</h2>
+      <p class="help">
+        Select the intended height. Atlas will not choose another floor
+        silently.
+      </p>
+      <div id="route-choices"></div>
+      <button id="route-choice-cancel">Cancel</button>
+    </dialog>
     <script type="module" src="/src/app.js"></script>
   </body>
 </html>

@@ -1,6 +1,13 @@
 import './style.css';
+import { NavigationController } from './navigation.js';
 import { MapViewer } from './viewer.js';
-import { createCatalog, loadSource, decodeMap, parseLoc, formatLoc } from './core.js';
+import {
+  createCatalog,
+  loadSource,
+  decodeMap,
+  parseLoc,
+  formatLoc,
+} from './core.js';
 
 const $ = (id) => document.getElementById(id);
 const desktop = window.atlasDesktop;
@@ -30,19 +37,67 @@ try {
   throw e;
 }
 
+const navigation = new NavigationController(viewer, {
+  mergeInventory(inventory) {
+    const installed = new Set(inventory.zones.map((z) => z.key));
+    catalog = catalog.filter((z) => !z.navigationOnly || installed.has(z.key));
+    for (const key of installed)
+      if (!catalog.some((z) => z.key === key))
+        catalog.push({
+          key,
+          name: key + ' · geometry',
+          navigationOnly: true,
+          sources: [{ id: 'navigation', name: 'Navigation surfaces' }],
+        });
+    catalog.sort((a, b) => a.name.localeCompare(b.name));
+    renderZones();
+    if (!zone && catalog.length) selectZone(catalog[0].key);
+  },
+  onSurface(_triangles, wasFull) {
+    if (!viewer.data) return;
+    const surfaceOnly = zone.navigationOnly || !viewer.data.lines.length;
+    if (surfaceOnly) {
+      viewer.data.navigationOnly = true;
+      viewer.extendNavigationBounds();
+      viewer.showNavigation = true;
+    }
+    const b = viewer.data.bounds;
+    for (const id of ['z-low', 'z-high', 'z-low-number', 'z-high-number']) {
+      $(id).min = Math.floor(b.min[2]);
+      $(id).max = Math.max(Math.floor(b.min[2]) + 1, Math.ceil(b.max[2]));
+    }
+    if (wasFull || surfaceOnly) allHeights();
+    if (surfaceOnly) {
+      $('empty-state').hidden = true;
+      viewer.fit();
+    }
+  },
+});
+
 function showCatalog(value) {
+  navigation.invalidate(true);
+  navigation.zone = null;
+  navigation.inventory = null;
+  viewer.setNavigation([]);
   catalog = value.zones;
   $('zone-search').value = '';
   renderZones();
   status(`${catalog.length} zone maps available`);
   const saved = localStorage.getItem('atlas-cross-zone');
   const z =
-    catalog.find((z) => z.key === saved) || catalog.find((z) => z.key === 'kedge') || catalog[0];
-  if (z) selectZone(z.key);
+    catalog.find((z) => z.key === saved) ||
+    catalog.find((z) => z.key === 'kedge') ||
+    catalog[0];
+  if (z)
+    selectZone(z.key).then(() => {
+      if (desktop) navigation.refreshInventory();
+    });
 }
 function renderZones() {
   const term = $('zone-search').value.toLowerCase().trim();
-  const matches = catalog.filter((zone) => `${zone.name} ${zone.key}`.toLowerCase().includes(term));
+  const matches = catalog.filter((zone) =>
+    `${zone.name} ${zone.key}`.toLowerCase().includes(term),
+  );
   const buttons = document.createDocumentFragment();
   for (const match of matches) {
     const button = document.createElement('button');
@@ -58,7 +113,8 @@ function renderZones() {
     buttons.append(button);
   }
   $('zone-list').replaceChildren(buttons);
-  $('zone-count').textContent = `${matches.length} of ${catalog.length} zone maps`;
+  $('zone-count').textContent =
+    `${matches.length} of ${catalog.length} zone maps`;
 }
 
 async function chooseFolder() {
@@ -81,7 +137,8 @@ $('folder-input').onchange = async (e) => {
       nextFiles.set(parts.join('/'), file);
     }
     const zones = createCatalog([...nextFiles.keys()]);
-    if (!zones.length) throw Error('No map files found. Choose the game’s maps folder.');
+    if (!zones.length)
+      throw Error('No map files found. Choose the game’s maps folder.');
     files = nextFiles;
     showCatalog({ zones });
   } catch (error) {
@@ -93,9 +150,12 @@ async function selectZone(key) {
   const selectedZone = catalog.find((zone) => zone.key === key);
   if (!selectedZone) return;
   zone = selectedZone;
+  navigation.setZone(zone);
   localStorage.setItem('atlas-cross-zone', key);
   sourceId = zone.sources[0].id;
-  $('source-select').replaceChildren(...zone.sources.map((s) => new Option(s.name, s.id)));
+  $('source-select').replaceChildren(
+    ...zone.sources.map((s) => new Option(s.name, s.id)),
+  );
   $('source-select').disabled = false;
   renderZones();
   await loadMap();
@@ -114,7 +174,8 @@ function updateControlAvailability() {
   const controls = document.querySelectorAll(
     '.controls-panel input, .controls-panel select, .controls-panel button, .tools button',
   );
-  for (const control of controls) control.disabled = !ready;
+  for (const control of controls)
+    if (!control.closest('#routing-panel')) control.disabled = !ready;
   const sideView = ready && ['north', 'west'].includes(viewer.mode);
   $('height-scale').disabled = !sideView;
   $('cutaway').disabled = !sideView;
@@ -129,7 +190,8 @@ function clearMap() {
   viewer.clearData();
   labelOptions = [];
   $('landmark').replaceChildren(new Option('Choose a landmark', ''));
-  $('landmark-detail').textContent = 'Select a map annotation to see its coordinates.';
+  $('landmark-detail').textContent =
+    'Select a map annotation to see its coordinates.';
   $('label-search').value = '';
   $('location').value = '';
   $('location-detail').textContent = 'Manual marker · no live tracking';
@@ -137,7 +199,28 @@ function clearMap() {
   updateControlAvailability();
 }
 
+function navigationMap(selectedZone) {
+  return {
+    key: selectedZone.key,
+    name: selectedZone.name,
+    source: 'Navigation surfaces',
+    navigationOnly: true,
+    lines: [],
+    labels: [],
+    references: [],
+    warnings: [],
+    bounds: {
+      min: [-1, -1, -1],
+      max: [1, 1, 1],
+      center: [0, 0, 0],
+      size: [2, 2, 2],
+      span: 2,
+    },
+  };
+}
+
 async function readMap(selectedZone, selectedSource, selectedFiles) {
+  if (selectedZone.navigationOnly) return navigationMap(selectedZone);
   if (desktop) return unwrap(desktop.load(selectedZone.key, selectedSource));
   return loadSource(selectedZone, selectedSource, async (path) => {
     const file = selectedFiles.get(path);
@@ -148,16 +231,30 @@ async function readMap(selectedZone, selectedSource, selectedFiles) {
 }
 
 function displayMap(data) {
+  if (!data.lines.length && viewer.navigationTriangles.length)
+    data.navigationOnly = true;
+  viewer.showNavigation = data.navigationOnly || $('route-surfaces').checked;
   viewer.setData(data);
-  if (data.lines.length) {
+  if (
+    data.lines.length ||
+    (data.navigationOnly && viewer.navigationTriangles.length)
+  ) {
     $('empty-state').hidden = true;
   } else {
-    showEmptyState('No line geometry', 'Try another map source for this zone.');
+    showEmptyState(
+      data.navigationOnly ? 'Navigation surfaces' : 'No line geometry',
+      data.navigationOnly
+        ? 'Choose route endpoints or enable navigation surfaces in Route options to prepare this zone.'
+        : 'Try another map source for this zone.',
+    );
   }
   if (!data.references.length) $('references').checked = false;
   for (const id of ['z-low', 'z-high', 'z-low-number', 'z-high-number']) {
     $(id).min = Math.floor(data.bounds.min[2]);
-    $(id).max = Math.max(Math.floor(data.bounds.min[2]) + 1, Math.ceil(data.bounds.max[2]));
+    $(id).max = Math.max(
+      Math.floor(data.bounds.min[2]) + 1,
+      Math.ceil(data.bounds.max[2]),
+    );
   }
   $('z-low').value = viewer.options.low;
   $('z-high').value = viewer.options.high;
@@ -168,7 +265,9 @@ function displayMap(data) {
   $('zone-subtitle').textContent =
     `${data.key} · ${data.source} · ${data.lines.length.toLocaleString()} source segments`;
   status(
-    data.warnings.length ? data.warnings.join(' · ') : 'Map loaded · files stay on this computer',
+    data.warnings.length
+      ? data.warnings.join(' · ')
+      : 'Map loaded · files stay on this computer',
     data.warnings.length > 0,
   );
 }
@@ -179,7 +278,10 @@ async function loadMap() {
   status('Loading ' + zone.name + '…');
   $('zone-title').textContent = zone.name;
   $('zone-subtitle').textContent = '';
-  showEmptyState('Loading ' + zone.name + '…', 'Reading local map coordinates.');
+  showEmptyState(
+    'Loading ' + zone.name + '…',
+    'Reading local map coordinates.',
+  );
   try {
     // Capture the folder's file map before awaiting; a later import owns its own load.
     const data = await readMap(zone, sourceId, files);
@@ -187,6 +289,13 @@ async function loadMap() {
     displayMap(data);
   } catch (error) {
     if (id !== loadID) return;
+    if (navigation.context && viewer.navigationTriangles.length) {
+      const fallback = navigationMap(zone);
+      fallback.source = 'Navigation surfaces · reference unavailable';
+      fallback.warnings = [error.message];
+      displayMap(fallback);
+      return;
+    }
     clearMap();
     status(error.message, true);
     $('zone-subtitle').textContent = 'Could not load this source.';
@@ -229,18 +338,30 @@ function refreshLandmarks() {
   const selected = viewer.selected,
     term = $('label-search').value.toLowerCase();
   labelOptions = viewer.labels
-    .filter((l) => viewer.options.layers.includes(l.layer) && l.name.toLowerCase().includes(term))
+    .filter(
+      (l) =>
+        viewer.options.layers.includes(l.layer) &&
+        l.name.toLowerCase().includes(term),
+    )
     .sort((a, b) => a.name.localeCompare(b.name));
   $('landmark').replaceChildren(
     new Option(`${labelOptions.length} labels · choose one`, ''),
-    ...labelOptions.map((l, i) => new Option((l.reference ? '[ref] ' : '') + l.name, String(i))),
+    ...labelOptions.map(
+      (l, i) => new Option((l.reference ? '[ref] ' : '') + l.name, String(i)),
+    ),
   );
   if (selected) {
     const i = labelOptions.indexOf(selected);
     if (i >= 0) $('landmark').value = String(i);
   }
 }
-for (const id of ['ghost', 'vertical-edges', 'references', 'extra-layers', 'show-labels'])
+for (const id of [
+  'ghost',
+  'vertical-edges',
+  'references',
+  'extra-layers',
+  'show-labels',
+])
   $(id).onchange = updateOptions;
 for (const side of ['low', 'high']) {
   $('z-' + side).oninput = () => {
@@ -306,7 +427,8 @@ function setView(mode) {
       ? 'Drag to orbit · Shift-drag / right-drag to pan · Scroll to zoom'
       : 'Drag to pan · Scroll to zoom · Use cutaway to separate overlapping rooms';
 }
-for (const b of document.querySelectorAll('[data-view]')) b.onclick = () => setView(b.dataset.view);
+for (const b of document.querySelectorAll('[data-view]'))
+  b.onclick = () => setView(b.dataset.view);
 $('height-scale').onchange = () => {
   viewer.setMagnification(Number($('height-scale').value));
   updateOptions();
@@ -330,7 +452,8 @@ $('zoom-in').onclick = () => viewer.zoom(1.25);
 $('zoom-out').onclick = () => viewer.zoom(0.8);
 $('label-search').oninput = refreshLandmarks;
 $('landmark').onchange = () => {
-  if ($('landmark').value !== '') selectLabel(labelOptions[Number($('landmark').value)]);
+  if ($('landmark').value !== '')
+    selectLabel(labelOptions[Number($('landmark').value)]);
 };
 function selectLabel(label) {
   if (!label) return;
@@ -356,7 +479,8 @@ $('slice-here').onclick = () => {
   if (!p) return;
   $('z-low').value = p[2] - 40;
   $('z-high').value = p[2] + 40;
-  if ($('cutaway').checked) $('depth').value = p[viewer.mode === 'west' ? 0 : 1];
+  if ($('cutaway').checked)
+    $('depth').value = p[viewer.mode === 'west' ? 0 : 1];
   syncHeightFields();
   updateOptions();
   viewer.focus(p);
@@ -371,7 +495,10 @@ function markLocation() {
   const b = viewer.data.bounds,
     margin = Math.max(50, b.span * 0.15);
   if (p.some((v, i) => v < b.min[i] - margin || v > b.max[i] + margin)) {
-    status('That location is outside this map. Check the zone and Y, X, Z order.', true);
+    status(
+      'That location is outside this map. Check the zone and Y, X, Z order.',
+      true,
+    );
     return;
   }
   viewer.marker = p;
@@ -396,7 +523,9 @@ $('export').onclick = async () => {
     const blob = await viewer.png();
     if (!blob) throw Error('Could not create image.');
     if (desktop) {
-      const saved = await unwrap(desktop.exportPNG(new Uint8Array(await blob.arrayBuffer()), name));
+      const saved = await unwrap(
+        desktop.exportPNG(new Uint8Array(await blob.arrayBuffer()), name),
+      );
       if (saved) status('Map image saved.');
     } else {
       const url = URL.createObjectURL(blob),
@@ -432,6 +561,7 @@ window.atlasTest = {
     return {
       ready,
       zones: catalog.length,
+      mapZones: catalog.filter((z) => !z.navigationOnly).length,
       key: zone?.key,
       source: sourceId,
       lines: viewer.data?.lines.length,
@@ -446,4 +576,5 @@ window.atlasTest = {
   selectZone,
   setView,
   viewer,
+  navigation,
 };
