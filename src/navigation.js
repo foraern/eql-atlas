@@ -558,13 +558,50 @@ export class NavigationController {
     const start = this.resolved.start || (await this.resolve('start', a, id)),
       end = this.resolved.end || (await this.resolve('end', b, id));
     this.status('Finding route…');
-    const queryStarted = performance.now();
-    const r = await this.call(
-      'route',
-      { context: this.context, start, end, movement: this.movement() },
-      id,
-    );
-    r.queryWallMS = performance.now() - queryStarted;
+    const query = async (movement) => {
+      const began = performance.now();
+      const result = await this.call('route', { context: this.context, start, end, movement }, id);
+      result.queryWallMS = performance.now() - began;
+      return result;
+    };
+    let r;
+    const movement = this.movement();
+    try {
+      r = await query(movement);
+    } catch (error) {
+      const excludedActions = [...new Set((error.details?.excluded || [])
+        .map((link) => link.kind)
+        .filter((kind) => ['bridge', 'door', 'lift', 'jump', 'drop', 'swim'].includes(kind)))];
+      if (error.code !== 'noRoute' || !excludedActions.length) throw error;
+      const previewMovement = { ...movement, mode: 'preview',
+        actions: [...new Set([...movement.actions, ...excludedActions])] };
+      if (movement.mode === 'preview' && excludedActions.every((kind) => movement.actions.includes(kind)))
+        throw error;
+      // Offer a preview only when recorded transitions complete this exact route.
+      // Never connect arbitrary gaps or relax the walking profile.
+      try { r = await query(previewMovement); }
+      catch (previewError) {
+        if (previewError.code === 'noRoute') throw error;
+        throw previewError;
+      }
+      this.viewer.setReachable(error.details.reachable || [], error.details.excluded || []);
+      this.status('No route under the current rules. Recorded conditional crossings provide a preview; their conditions must hold.');
+      const preview = await this.choose(
+        `Preview a route with ${r.unverifiedCrossings} unverified crossings?`,
+        [true, false],
+        (value) => value ? 'Show conditional route preview' : 'Keep current routing rules',
+        id,
+      );
+      this.check(id);
+      if (!preview) throw error;
+      $('route-mode').value = 'preview';
+      const used = new Set(r.segments.map((segment) => segment.kind));
+      for (const input of $('route-actions').querySelectorAll('input'))
+        if (used.has(input.value)) input.checked = true;
+      this.saveSettings();
+      // Recheck source freshness after the user closes the prompt.
+      r = await query(this.movement());
+    }
     r.capability = this.movement().capability;
     $('route-instructions').hidden = false;
     $('route-instructions-text').textContent =
@@ -584,6 +621,8 @@ export class NavigationController {
         })
         .join('\n\n');
     this.route = r;
+    if (r.segments.some((segment) => segment.kind === 'bridge'))
+      $('route-instructions').open = true;
     this.viewer.setRoute(r, this.resolved);
     this.viewer.fitRoute();
     const kind =

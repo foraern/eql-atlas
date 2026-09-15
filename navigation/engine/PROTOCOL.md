@@ -22,7 +22,7 @@ The Electron NavigationBackend loads the returned surface file for selected-zone
 
 - `mode`: `walk` (default), `tested`, or `preview`.
 - `capability`: nonempty name of the character movement setup (default `Standard movement`, maximum 120 characters). Include relevant size, speed, buffs and movement conditions when recording tests.
-- `actions`: subset of `jump`, `drop`, `swim`, `door`, `lift`; default `["jump"]`.
+- `actions`: subset of `jump`, `drop`, `swim`, `door`, `lift`, `bridge`; default `["jump"]`.
 - `jumpDistance`, `jumpRise`, `jumpDrop`, `drop`: horizontal jump gap, upward jump difference, downward jump difference and maximum drop, all in original game units. Defaults 16, 2, 2, 8 are proposal limits, not measured movement constants. Each accepts 0–100.
 
 A catalog has `version: 1`, `zone`, `format`, `assets` and `links`. `assets` must exactly equal the prepared manifest's complete source dependency/hash dictionary. Stale catalogs are excluded with a diagnostic; never refresh hashes without reviewing the crossings. There are at most 64 catalogs per request and 64 matching-zone links in total.

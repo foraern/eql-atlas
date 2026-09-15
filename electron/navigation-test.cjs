@@ -19,11 +19,16 @@ module.exports = async (win, root, backend) => {
     evaluate(
       'new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(()=>{atlasTest.viewer.render();r()})))',
     );
-  const route = async (a, b) => {
+  const route = async (a, b, acceptPreview = false) => {
     await evaluate(
       `(()=>{document.getElementById('route-start').value=${JSON.stringify(a)};document.getElementById('route-end').value=${JSON.stringify(b)};atlasTest.navigation.invalidate();document.getElementById('route-calculate').click();})()`,
     );
-    await wait('!atlasTest.navigation.busy');
+    await wait('!atlasTest.navigation.busy || document.getElementById("route-choice").open');
+    if (await evaluate('document.getElementById("route-choice").open')) {
+      assert.match(await evaluate('document.getElementById("route-choice-title").textContent'), /unverified crossings/);
+      await evaluate(`document.getElementById("route-choices").children[${acceptPreview ? 0 : 1}].click()`);
+      await wait('!atlasTest.navigation.busy');
+    }
     return evaluate(
       '({status:document.getElementById("route-status").textContent,route:atlasTest.navigation.route})',
     );
@@ -73,6 +78,48 @@ module.exports = async (win, root, backend) => {
     await evaluate(
       "atlasTest.navigation.inventory.zones=atlasTest.navigation.inventory.zones.filter(z=>z.format!=='s3d');atlasTest.navigation.configureVersions()",
     );
+    // Conditional fallback is generic: real helper, synthetic stacked floors,
+    // an explicit bridge record, and no zone-name special case.
+    await evaluate("atlasTest.selectZone('stacked')");
+    await route('80,210,30', '80,270,30');
+    const originalCatalogs = backend.bundled;
+    backend.bundled = [...originalCatalogs, {
+      version: 1, zone: 'stacked', format: 'eqg', assets: backend.manifest.assets,
+      links: [{ id: 'fixture-bridge', kind: 'bridge', label: 'Fixture bridge',
+        from: [-210,-80,30], to: [-270,-80,40],
+        note: 'Lower the bridge before crossing. Synthetic fixture; unverified.' }],
+    }];
+    const askForBridge = async () => {
+      await evaluate("document.getElementById('route-mode').value='walk';document.getElementById('route-actions').querySelector('input[value=bridge]').checked=false;document.getElementById('route-start').value='80,210,30';document.getElementById('route-end').value='80,270,40';atlasTest.navigation.invalidate();document.getElementById('route-calculate').click()");
+      await wait("document.getElementById('route-choice').open");
+      assert.match(await evaluate("document.getElementById('route-choice-title').textContent"), /1 unverified crossings/);
+    };
+    try {
+      const disconnected = await route('10,10,-100', '80,270,40');
+      assert.equal(disconnected.route, null);
+      assert.equal(await evaluate("document.getElementById('route-choice').open"), false);
+      await askForBridge();
+      await evaluate("document.getElementById('route-choices').children[1].click()");
+      await wait('!atlasTest.navigation.busy');
+      assert.equal(await evaluate('atlasTest.navigation.route'), null);
+      assert.equal(await evaluate("document.getElementById('route-mode').value"), 'walk');
+      await askForBridge();
+      await evaluate("document.getElementById('route-choices').children[0].click()");
+      await wait('!atlasTest.navigation.busy');
+      assert.equal(await evaluate('atlasTest.navigation.route.status'), 'requiresVerification');
+      assert.deepEqual(await evaluate('atlasTest.navigation.route.segments.map(s=>s.kind)'), ['walk','bridge','walk']);
+      assert.ok(await evaluate("document.getElementById('route-instructions').open"));
+      assert.match(await evaluate("document.getElementById('route-instructions-text').textContent"), /Lower the bridge/);
+      await screenshot('route-bridge-fixture');
+      // Cancellation during the prompt cannot publish its computed preview.
+      await askForBridge();
+      await evaluate("document.getElementById('route-clear').click()");
+      await wait('!atlasTest.navigation.busy');
+      assert.equal(await evaluate('atlasTest.navigation.route'), null);
+      assert.equal(await evaluate("document.getElementById('route-choice').open"), false);
+    } finally { backend.bundled = originalCatalogs; }
+    await evaluate("document.getElementById('route-mode').value='walk';atlasTest.selectZone('dry')");
+    await route('80,210,30', '80,270,30');
     // Text collection changes preserve the computed route and its mesh context.
     await evaluate(
       "document.getElementById('source-select').selectedIndex=1;document.getElementById('source-select').dispatchEvent(new Event('change'))",
@@ -247,6 +294,17 @@ module.exports = async (win, root, backend) => {
         `atlasTest.setView('${mode}');atlasTest.viewer.fitRoute()`,
       );
       await screenshot('route-efreeti-' + mode);
+    }
+    await evaluate("document.getElementById('route-mode').value='walk';document.getElementById('route-actions').querySelector('input[value=bridge]').checked=false;document.getElementById('route-mode').dispatchEvent(new Event('change'))");
+    result = await route('-413.6787,-265.7017,-111.9677', '-1376.3337,-824.1087,85.2857', true);
+    assert.equal(result.route?.status, 'requiresVerification', result.status);
+    assert.deepEqual(result.route.segments.map(s=>s.kind), ['walk','bridge','walk']);
+    assert.equal(result.route.unverifiedCrossings, 1);
+    assert.match(await evaluate("document.getElementById('route-instructions-text').textContent"), /lower the bridge/);
+    reports.push({name:'nagafen-bridge-preview',distance:result.route.distance,queryWallMS:result.route.queryWallMS,crossings:1});
+    for (const mode of ['top', '3d']) {
+      await evaluate(`atlasTest.setView('${mode}');atlasTest.viewer.fitRoute()`);
+      await screenshot('route-nagafen-' + mode);
     }
     const png = await evaluate(
       'atlasTest.viewer.png().then(async b=>Array.from(new Uint8Array(await b.arrayBuffer())))',

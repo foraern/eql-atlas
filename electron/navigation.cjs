@@ -46,9 +46,9 @@ function movement(value = {}) {
     !m.capability.trim() ||
     m.capability.length > 120 ||
     !Array.isArray(m.actions) ||
-    m.actions.length > 5 ||
+    m.actions.length > 6 ||
     m.actions.some(
-      (a) => !['jump', 'swim', 'drop', 'door', 'lift'].includes(a),
+      (a) => !['jump', 'swim', 'drop', 'door', 'lift', 'bridge'].includes(a),
     ) ||
     [m.jumpDistance, m.jumpRise, m.jumpDrop, m.drop].some(
       (v) => !Number.isFinite(v) || v < 0 || v > 100,
@@ -99,7 +99,7 @@ function validateCatalog(c) {
       !link.id ||
       link.id.length > 120 ||
       ids.has(link.id) ||
-      !['jump', 'swim', 'drop', 'door', 'lift'].includes(link.kind) ||
+      !['jump', 'swim', 'drop', 'door', 'lift', 'bridge'].includes(link.kind) ||
       !point(link.from) ||
       !point(link.to)
     )

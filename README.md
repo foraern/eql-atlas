@@ -1,6 +1,6 @@
 # EQL Atlas Cross-Platform
 
-EQL Atlas is an offline Electron and Three.js map viewer with local geometry routing. The same interface also supports browser map viewing with local folder import. This repository is the source of the macOS, Windows and Linux edition. Version 0.2.0 adds automatic routes from local zone geometry.
+EQL Atlas is an offline Electron and Three.js map viewer with local geometry routing. The same interface also supports browser map viewing with local folder import. This repository is the source of the macOS, Windows and Linux edition. Version 0.2.1 adds conditional crossing previews, including the Nagafen bridge, to local geometry routing.
 
 ## Try the desktop app
 
@@ -8,9 +8,9 @@ Download a package from [GitHub Releases](https://github.com/foraern/eql-atlas/r
 
 | Package | How to launch | Validation |
 | --- | --- | --- |
-| `EQL-Atlas-0.2.0-macOS-arm64.zip` | Extract, move the app to Applications, and open it. Requires an Apple Silicon Mac. | Native macOS build and packaged smoke tests. |
-| `EQL-Atlas-0.2.0-Windows-x64.zip` | Extract the entire folder, then open `EQL Atlas Cross-Platform.exe`. Keep its supporting files together. | Native Windows build and packaged smoke tests in CI. |
-| `EQL-Atlas-0.2.0-Linux-x64.tar.gz` | Extract the archive, then run `./EQL Atlas Cross-Platform` from the extracted folder. | Native Ubuntu build and packaged smoke tests in CI. |
+| `EQL-Atlas-0.2.1-macOS-arm64.zip` | Extract, move the app to Applications, and open it. Requires an Apple Silicon Mac. | Native macOS build and packaged smoke tests. |
+| `EQL-Atlas-0.2.1-Windows-x64.zip` | Extract the entire folder, then open `EQL Atlas Cross-Platform.exe`. Keep its supporting files together. | Native Windows build and packaged smoke tests in CI. |
+| `EQL-Atlas-0.2.1-Linux-x64.tar.gz` | Extract the archive, then run `./EQL Atlas Cross-Platform` from the extracted folder. | Native Ubuntu build and packaged smoke tests in CI. |
 
 This preview is unsigned and the Mac app is not notarized. macOS may block the first launch; after trying to open it, use **System Settings → Privacy & Security → Open Anyway** if you choose to trust this download. Windows may also show an unknown-publisher warning. Linux desktop dependencies and sandbox configuration vary by distribution; CI covers Ubuntu 24.04; other distributions may require additional system libraries. `SHA256SUMS.txt` accompanies the downloads for integrity checks.
 
@@ -119,6 +119,10 @@ Point projection searches no more than twice the radius horizontally and one cha
 Walking-only routes use collision surfaces, headroom, clearance, supported steps and slopes. Water, lava and special transitions are excluded. **Based on static geometry; door access and live obstructions are unverified.** No automatic movement, live tracking, combat avoidance or cross-zone travel is performed.
 
 When walking cannot connect the endpoints, Atlas shows the reachable walking surface and known excluded crossing reasons. This does not prove the journey is impossible in-game. The later routing work is also included: optional directed jump, drop, swim, door and lift catalogs can connect independently walkable sections. **Allow tested crossings** requires matching user-supplied evidence for the exact assets, direction, profile and named character setup. **Preview unverified crossings** shows an orange, dashed, explicitly unverified proposal; it is not a passability claim. Expand **Route instructions** for ordered walking/crossing endpoints, crossing notes and recorded test conditions. Special movement is schematic, without inferred jump physics, door state, lift timing or swimming clearance. Jump/drop limits are proposal limits, not measured movement constants.
+
+When walking fails, Atlas checks whether recorded conditional crossings can complete the exact route and offers a preview. This works for every zone with matching crossing records; arbitrary floor gaps are never linked automatically. Declining keeps the existing rules. Bridges have their own action setting, and operating instructions remain visible alongside any later user-test evidence.
+
+The Sol B catalog includes an unverified bridge connection for Lavastorm entrance–Nagafen in each direction. Lower the bridge and confirm a continuous passage before crossing; the connector is schematic, and operation, timing and passability still require an in-game check. Walking-only and tested modes reject these unverified connections. Run `python3 navigation/Tests/nagafen_routes.py GAME_ROOT CACHE OUTPUT` for the installed-asset regression.
 
 The bundled Sol B entrance–Efreeti pilot contains four proposed jump crossings in each direction. They are all unverified. Walking-only and tested modes must reject this journey until appropriate evidence exists. Import/export asset-bound catalogs under Route options; see `navigation/engine/PROTOCOL.md` for the schema. A changed game asset or profile invalidates old crossing evidence; importing a catalog never silently refreshes its source hashes.
 

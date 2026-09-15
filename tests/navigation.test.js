@@ -24,6 +24,7 @@ const helper = path.resolve(
 );
 test('navigation inputs reject invalid profiles, capabilities and unbound catalogs', () => {
   assert.equal(profile().step, 2);
+  assert.deepEqual(movement({mode:'preview',actions:['bridge']}).actions, ['bridge']);
   assert.throws(() => profile({ height: NaN }));
   assert.throws(() => profile({ step: 8, height: 6 }));
   assert.throws(() => movement({ mode: 'automatic' }));

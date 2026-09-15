@@ -35,16 +35,21 @@ def main():
   tested=copy.deepcopy(catalog)
   for link in tested['links']:link['verification']=dict(status='userTested',capability='Test character',date='2026-09-14',notes='Synthetic verification fixture only',profile=PROFILE)
   r=route('tested',cat=tested,capability='Test character');assert r['status']=='userTestedCrossings' and r['unverifiedCrossings']==0
-  assert all(s['note']=='Synthetic verification fixture only' for s in r['segments'] if s['kind']!='walk')
+  assert all(s['verification']['notes']=='Synthetic verification fixture only' for s in r['segments'] if s['kind']!='walk')
   expect('noRoute',lambda:route('tested',cat=tested,capability='Different character'))
   # A valid but longer user-tested route wins over a shorter unverified shortcut.
   alternate=copy.deepcopy(tested);alternate['links'].append(dict(id='shortcut',kind='swim',**{'from':start['point'],'to':end['point']}))
   r=route(cat=alternate,capability='Test character',actions=['jump','swim']);assert r['unverifiedCrossings']==0 and r['crossings']==2
   # Other supported actions require explicit links and enabled capabilities.
-  for kind in ['swim','door','lift']:
+  for kind in ['swim','door','lift','bridge']:
    c=copy.deepcopy(catalog)
-   for link in c['links']:link['kind']=kind
+   for link in c['links']:link['kind']=kind;link['note']='Operate the crossing before proceeding.'
    r=route(cat=c,actions=[kind]);assert all(s['kind'] in ['walk',kind] for s in r['segments'])
+   expect('noRoute',lambda:route('walk',cat=c,actions=[kind]))
+   expect('noRoute',lambda:route('tested',cat=c,actions=[kind]))
+   for link in c['links']:link['verification']=dict(status='userTested',capability='Test character',date='2026-09-15',notes='Synthetic evidence',profile=PROFILE)
+   r=route('tested',cat=c,actions=[kind],capability='Test character')
+   assert all(s['note']=='Operate the crossing before proceeding.' and s['verification']['notes']=='Synthetic evidence' for s in r['segments'] if s['kind']!='walk')
   # Catalogs with duplicate IDs or excessive links fail explicitly.
   dup=copy.deepcopy(catalog);dup['links'].append(dup['links'][0]);expect('catalog',lambda:route(cat=dup))
   huge=copy.deepcopy(catalog);huge['links']=[dict(links[0],id=str(i)) for i in range(65)];expect('capacity',lambda:route(cat=huge))

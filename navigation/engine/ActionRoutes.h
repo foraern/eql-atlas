@@ -15,10 +15,10 @@ struct MovementOptions {
     capability = j.value("capability", capability);
     require(!capability.empty() && capability.size() <= 120, "capabilities", "Name the character movement setup (up to 120 characters)");
     auto allowed = j.value("actions", json::array({"jump"}));
-    require(allowed.is_array() && allowed.size() <= 5, "capabilities", "Invalid action capabilities");
+    require(allowed.is_array() && allowed.size() <= 6, "capabilities", "Invalid action capabilities");
     for (const auto &a : allowed) {
       auto name = a.get<std::string>();
-      require(name == "jump" || name == "drop" || name == "swim" || name == "door" || name == "lift", "capabilities", "Unsupported action capability");
+      require(name == "jump" || name == "drop" || name == "swim" || name == "door" || name == "lift" || name == "bridge", "capabilities", "Unsupported action capability");
       actions.insert(name);
     }
     jumpDistance = j.value("jumpDistance", jumpDistance); jumpRise = j.value("jumpRise", jumpRise);
@@ -111,7 +111,7 @@ json actionRoute(const json &req) {
       require(++linkCount <= 64, "capacity", "At most 64 crossings per zone are supported");
       auto id = link.at("id").get<std::string>(), kind = link.at("kind").get<std::string>();
       require(!id.empty() && id.size() <= 120 && ids.insert(id).second, "catalog", "Crossing identifiers must be unique");
-      require(kind == "jump" || kind == "drop" || kind == "swim" || kind == "door" || kind == "lift", "catalog", "Unknown crossing action");
+      require(kind == "jump" || kind == "drop" || kind == "swim" || kind == "door" || kind == "lift" || kind == "bridge", "catalog", "Unknown crossing action");
       auto from = fromMap(link.at("from")), to = fromMap(link.at("to"));
       auto label = link.value("label", kind); require(label.size() <= 240, "catalog", "Crossing label is too long");
       auto reject = [&](std::string reason) {excluded.push_back({{"id",id},{"kind",kind},{"label",label},{"reason",reason},{"from",link["from"]},{"to",link["to"]}});};
@@ -133,7 +133,7 @@ json actionRoute(const json &req) {
       for (const auto &p : via) {fromMap(p); points.push_back(p);} points.push_back(b[0]["point"]);
       double distance = 0; for (size_t i=1;i<points.size();i++) distance += glm::distance(fromMap(points[i-1]),fromMap(points[i]));
       require(link.value("note", "").size() <= 4096, "catalog", "Crossing note is too long");
-      auto segment = json{{"id",id},{"kind",kind},{"label",label},{"status",tested ? "userTested" : "unverified"},{"points",points},{"distance",distance},{"note",tested ? link["verification"].value("notes", "") : link.value("note", "Crossing requires in-game verification")}};
+      auto segment = json{{"id",id},{"kind",kind},{"label",label},{"status",tested ? "userTested" : "unverified"},{"points",points},{"distance",distance},{"note",link.value("note", "Crossing requires in-game verification")}};
       if (tested) segment["verification"] = link["verification"];
       int i = nodes.size(); nodes.push_back(a[0]); nodes.push_back(b[0]); crossings.push_back({i,i+1,segment,!tested});
     }
